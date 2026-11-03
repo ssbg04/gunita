@@ -22,8 +22,8 @@ def run_gui():
     )
 
     app = QApplication(sys.argv)
-    app.setApplicationName("Scanner Background Remover")
-    app.setOrganizationName("BgRmBr")
+    app.setApplicationName("Gunita")
+    app.setOrganizationName("Gunita")
 
     window = MainWindow()
     window.show()
@@ -80,7 +80,7 @@ def main():
         return
 
     parser = argparse.ArgumentParser(
-        description="Crop white scanner backgrounds from photos.",
+        description="Gunita: Auto-crop white scanner backgrounds from photos and preserve old memories.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--gui", action="store_true", help="Launch the desktop GUI.")

@@ -1,6 +1,8 @@
-# Scanner Background Remover (BgRmBr)
+# Gunita
 
-A fast, lightweight, and offline desktop application to detect and auto-crop white scanner margins from scanned photos, prints, and documents.
+A fast, lightweight, and offline desktop application to preserve memories by auto-cropping white scanner margins from scanned photos, vintage prints, and documents.
+
+> **Gunita** *(Tagalog)*: Memory, reminiscence, nostalgic recollection.
 
 ![Windows Platform](https://img.shields.io/badge/Platform-Windows-blue)
 ![Python Version](https://img.shields.io/badge/Python-3.10%2B-green)
@@ -86,11 +88,11 @@ python build_exe.py
 
 The resulting standalone executable is generated at:
 ```
-dist/ScannerCropper.exe
+dist/Gunita.exe
 ```
 
 ### GitHub Actions (Automated CI/CD)
-Pushing to `main` or pushing a version tag (e.g. `v1.0.0`) automatically builds a compressed, lightweight portable package (`ScannerCropper-Windows-x64-portable.zip`) via `.github/workflows/build.yml`.
+Pushing to `main` or pushing a version tag (e.g. `v1.0.0`) automatically builds a compressed, lightweight portable package (`Gunita-Windows-x64-portable.zip`) via `.github/workflows/build.yml`.
 
 ---
 

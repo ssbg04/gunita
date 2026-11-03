@@ -40,7 +40,7 @@ def pil_to_qpixmap(pil_img: Image.Image) -> QPixmap:
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Scanner Background Remover (Auto-Crop)")
+        self.setWindowTitle("Gunita — Scanner Background Remover & Auto-Crop")
         self.resize(1180, 740)
         self.setStyleSheet(DARK_THEME)
 

@@ -57,7 +57,7 @@ def build():
         "--onefile",
         "--clean",
         "--name",
-        "ScannerCropper",
+        "Gunita",
     ]
 
     for mod in EXCLUDE_MODULES:
@@ -65,12 +65,12 @@ def build():
 
     cmd.append(str(entry_point))
 
-    print("Building lightweight portable executable...")
+    print("Building lightweight portable Gunita executable...")
     print(f"Executing: {' '.join(cmd)}\n")
     ret = subprocess.run(cmd, cwd=str(workspace))
 
     if ret.returncode == 0:
-        exe_path = workspace / "dist" / "ScannerCropper.exe"
+        exe_path = workspace / "dist" / "Gunita.exe"
         if exe_path.exists():
             size_mb = exe_path.stat().st_size / (1024 * 1024)
             print(f"\nBuild Succeeded!")

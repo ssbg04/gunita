@@ -41,16 +41,16 @@ jobs:
       - name: Create Portable ZIP Archive
         shell: pwsh
         run: |
-          Compress-Archive -Path "dist/ScannerCropper.exe" -DestinationPath "dist/ScannerCropper-Windows-x64-portable.zip" -Force
+          Compress-Archive -Path "dist/Gunita.exe" -DestinationPath "dist/Gunita-Windows-x64-portable.zip" -Force
           Get-Item dist/* | Select-Object Name, Length
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ScannerCropper-Windows-x64-portable
+          name: Gunita-Windows-x64-portable
           path: |
-            dist/ScannerCropper.exe
-            dist/ScannerCropper-Windows-x64-portable.zip
+            dist/Gunita.exe
+            dist/Gunita-Windows-x64-portable.zip
           retention-days: 14
 
       - name: Attach to GitHub Release
@@ -58,8 +58,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/ScannerCropper.exe
-            dist/ScannerCropper-Windows-x64-portable.zip
+            dist/Gunita.exe
+            dist/Gunita-Windows-x64-portable.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

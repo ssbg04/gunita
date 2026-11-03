@@ -1,146 +1,103 @@
 """
-crop_white_background.py
-Crops white (or near-white) backgrounds from scanned photos and saves
-results in a 'cropped' folder automatically.
+Main entry point for Scanner Background Remover.
+Launches the PySide6 Windows desktop GUI by default,
+or runs headless batch mode if command-line arguments are provided.
 """
 
-import argparse
 import sys
+import argparse
 from pathlib import Path
-import numpy as np
-from PIL import Image
+
+from core import CropConfig, process_single_image, run_batch
 
 
-def crop_white_background(
-    image: Image.Image,
-    threshold: int = 225,
-    padding: int = 15,
-    min_density: int = 50,
-) -> Image.Image:
-    rgb = image.convert("RGB")
-    arr = np.array(rgb)
-    gray = arr.mean(axis=2)
-    is_content = gray < threshold
+def run_gui():
+    from PySide6.QtWidgets import QApplication
+    from PySide6.QtCore import Qt
+    from ui import MainWindow
 
-    row_counts = is_content.sum(axis=1)
-    col_counts = is_content.sum(axis=0)
-
-    real_rows = np.where(row_counts > min_density)[0]
-    real_cols = np.where(col_counts > min_density)[0]
-
-    if real_rows.size == 0 or real_cols.size == 0:
-        print("  Warning: No substantial content found - returning original image.")
-        return image
-
-    top = max(real_rows[0] - padding, 0)
-    bottom = min(real_rows[-1] + padding + 1, arr.shape[0])
-    left = max(real_cols[0] - padding, 0)
-    right = min(real_cols[-1] + padding + 1, arr.shape[1])
-
-    return image.crop((left, top, right, bottom))
-
-
-def process_file(
-    input_path: Path,
-    output_folder: Path,
-    threshold: int,
-    padding: int,
-    min_density: int,
-) -> None:
-    print(f"Processing: {input_path}")
-
-    image = Image.open(input_path)
-    original_size = image.size
-
-    cropped = crop_white_background(
-        image,
-        threshold=threshold,
-        padding=padding,
-        min_density=min_density,
+    # Enable High DPI scaling
+    QApplication.setHighDpiScaleFactorRoundingPolicy(
+        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
 
-    # Create 'cropped' folder if it doesn't exist
-    output_folder.mkdir(parents=True, exist_ok=True)
-    output_path = output_folder / f"{input_path.stem}_cropped{input_path.suffix}"
+    app = QApplication(sys.argv)
+    app.setApplicationName("Scanner Background Remover")
+    app.setOrganizationName("BgRmBr")
 
-    fmt = image.format or "PNG"
-    save_kwargs = {}
-    if fmt.upper() in ("JPEG", "JPG"):
-        save_kwargs["quality"] = 95
-        save_kwargs["subsampling"] = 0
-        cropped = cropped.convert("RGB")
+    window = MainWindow()
+    window.show()
 
-    cropped.save(output_path, format=fmt, **save_kwargs)
+    sys.exit(app.exec())
 
-    new_size = cropped.size
-    print(f"  Original size : {original_size[0]} x {original_size[1]} px")
-    print(f"  Cropped size  : {new_size[0]} x {new_size[1]} px")
-    print(f"  Saved to      : {output_path}\n")
+
+def run_cli(args):
+    config = CropConfig(
+        threshold=args.threshold,
+        padding=args.padding,
+        min_density=args.min_density,
+        output_format=args.format,
+    )
+
+    image_paths = []
+    if args.folder:
+        folder = Path(args.folder)
+        if not folder.is_dir():
+            print(f"Error: '{folder}' is not a valid folder.", file=sys.stderr)
+            sys.exit(1)
+        for ext in ("*.jpg", "*.jpeg", "*.png", "*.bmp", "*.webp", "*.tif", "*.tiff"):
+            image_paths.extend(folder.glob(ext))
+            image_paths.extend(folder.glob(ext.upper()))
+
+    for pattern in args.inputs:
+        matched = list(Path(pattern).parent.glob(Path(pattern).name))
+        if not matched and Path(pattern).exists():
+            matched = [Path(pattern)]
+        image_paths.extend(matched)
+
+    if not image_paths:
+        print("No image files found to process.", file=sys.stderr)
+        sys.exit(1)
+
+    output_dir = Path(args.output) if args.output else Path("cropped")
+    print(f"Processing {len(image_paths)} image(s) -> '{output_dir}'")
+
+    def on_progress(idx, total, res):
+        status = "OK" if res.success else f"FAILED: {res.error_message}"
+        if res.is_fallback:
+            status = "FALLBACK (No edge detected)"
+        print(f"[{idx}/{total}] {res.input_path.name} -> {status}")
+
+    results = run_batch(image_paths, output_dir, config, on_progress=on_progress)
+    success_count = sum(1 for r in results if r.success)
+    print(f"\nDone: {success_count}/{len(results)} images processed successfully.")
 
 
 def main():
+    # If no arguments or explicitly requesting GUI, run GUI
+    if len(sys.argv) == 1 or (len(sys.argv) == 2 and sys.argv[1] == "--gui"):
+        run_gui()
+        return
+
     parser = argparse.ArgumentParser(
-        description="Crop white scanner backgrounds from photos and save to 'cropped' folder.",
+        description="Crop white scanner backgrounds from photos.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument(
-        "inputs",
-        nargs="*",
-        metavar="IMAGE",
-        help="Input image file(s) or glob patterns.",
-    )
-    parser.add_argument(
-        "--folder",
-        metavar="FOLDER",
-        help="Process all images in the specified folder.",
-    )
-    parser.add_argument(
-        "--threshold",
-        type=int,
-        default=225,
-        help="Brightness threshold (0-255). Default: 225.",
-    )
-    parser.add_argument(
-        "--padding",
-        type=int,
-        default=15,
-        help="Extra pixels to keep around the content boundary. Default: 15.",
-    )
-    parser.add_argument(
-        "--min-density",
-        type=int,
-        default=50,
-        help="Min content pixels per row/col to count as real content (filters dust). Default: 50.",
-    )
+    parser.add_argument("--gui", action="store_true", help="Launch the desktop GUI.")
+    parser.add_argument("inputs", nargs="*", metavar="IMAGE", help="Input image file(s) or glob patterns.")
+    parser.add_argument("--folder", metavar="FOLDER", help="Process all images in the specified folder.")
+    parser.add_argument("-o", "--output", metavar="DIR", help="Output directory (default: 'cropped').")
+    parser.add_argument("--threshold", type=int, default=225, help="Brightness threshold (0-255). Default: 225.")
+    parser.add_argument("--padding", type=int, default=15, help="Extra pixels around content boundary. Default: 15.")
+    parser.add_argument("--min-density", type=int, default=50, help="Min pixels per row/col to count as content. Default: 50.")
+    parser.add_argument("--format", choices=["PNG", "JPEG"], default=None, help="Force export format (default: match input).")
 
     args = parser.parse_args()
 
-    image_paths = []
-
-    # Folder support
-    if args.folder:
-        folder_path = Path(args.folder)
-        if not folder_path.is_dir():
-            print(f"Error: '{folder_path}' is not a valid folder.", file=sys.stderr)
-            sys.exit(1)
-        for ext in ("*.jpg", "*.jpeg", "*.png", "*.bmp", "*.tif", "*.tiff"):
-            image_paths.extend(folder_path.glob(ext))
-
-    # Handle individual inputs or glob patterns
-    for pattern in args.inputs:
-        image_paths.extend(Path(p).parent.glob(Path(p).name))
-
-    if not image_paths:
-        print("No images found to process!", file=sys.stderr)
-        sys.exit(1)
-
-    for input_path in image_paths:
-        if not input_path.exists():
-            print(f"Warning: '{input_path}' not found - skipping.", file=sys.stderr)
-            continue
-        # Use a 'cropped' folder inside the image's parent folder
-        output_folder = input_path.parent / "cropped"
-        process_file(input_path, output_folder, args.threshold, args.padding, args.min_density)
+    if args.gui:
+        run_gui()
+    else:
+        run_cli(args)
 
 
 if __name__ == "__main__":
